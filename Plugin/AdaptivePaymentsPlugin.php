@@ -12,7 +12,7 @@ use JMS\Payment\CoreBundle\Plugin\Exception\Action\VisitUrl;
 use JMS\Payment\CoreBundle\Plugin\Exception\ActionRequiredException;
 use JMS\Payment\CoreBundle\Util\Number;
 use JMS\Payment\PaypalBundle\Client\Client;
-use JMS\Payment\PaypalBundle\Client\Response;
+use JMS\Payment\PaypalBundle\Client\Response\ResponseInterface as Response;
 
 /*
  * Copyright 2013 Markus Weiland <mweiland@graph-ix.net>
@@ -47,7 +47,7 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
     protected $cancelUrl;
 
     /**
-     * @var \JMS\Payment\PaypalBundle\Client\Client
+     * @var \JMS\Payment\PaypalBundle\Client\AdaptivePaymentsClient
      */
     protected $client;
 
@@ -69,7 +69,98 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
 
     public function approveAndDeposit(FinancialTransactionInterface $transaction, $retry)
     {
-        $this->createCheckoutBillingAgreement($transaction, 'Sale');
+        $data = $transaction->getExtendedData();
+        
+        // check if this is the second call, after payer comes back from PayPal; token should now be authorized and money already deposited
+        // @see Explicit Approval Payment Flow at https://developer.paypal.com/webapps/developer/docs/classic/adaptive-payments/integration-guide/APIntro/
+        if ($transaction->getState() === FinancialTransactionInterface::STATE_PENDING)
+        {
+            
+            // TODO can we get this data via extendedData?
+//             $i = 0;
+//             $amount = 0;
+//             while ($response->body->has('paymentInfoList.paymentInfo('.$i.').receiver.amount')) {
+//                 $amount += $response->body->get('paymentInfoList.paymentInfo('.$i.').receiver.amount');
+            
+//                 $i++;
+//             }
+            
+            $transaction->setReferenceNumber($response->body->get('payKey'));
+//             $transaction->setProcessedAmount($amount);
+            $transaction->setResponseCode(PluginInterface::RESPONSE_CODE_SUCCESS);
+            $transaction->setReasonCode(PluginInterface::REASON_CODE_SUCCESS);
+            
+            return;
+        }
+        
+
+        $parameters = array();
+        $parameters['cancelUrl'] = $this->getCancelUrl($data);
+        $parameters['returnUrl'] = $this->getReturnUrl($data);
+        
+        $checkoutParams = $data->get('checkout_params');
+        $parameters['requestenvelope.errorLanguage'] = $checkoutParams['requestenvelope.errorLanguage'];
+        $parameters['currencyCode'] = $transaction->getPayment()->getPaymentInstruction()->getCurrency();
+        $parameters['receiverList.receiver(0).email'] = $checkoutParams['receiverList.receiver(0).email'];
+        $parameters['receiverList.receiver(0).amount'] = $checkoutParams['receiverList.receiver(0).amount'];
+        
+        // check for secondary receivers
+        // @see Chained Payments at https://developer.paypal.com/webapps/developer/docs/classic/api/adaptive-payments/Pay_API_Operation/
+        $hasPrimary = false;
+        for ($i = 1; $i < 6; $i++) {
+            if (array_key_exists('receiverList.receiver('.$i.').email', $checkoutParams)
+                && array_key_exists('receiverList.receiver('.$i.').amount', $checkoutParams)) {
+                
+                $parameters['receiverList.receiver('.$i.').email'] = $tmp['receiverList.receiver('.$i.').email'];
+                $parameters['receiverList.receiver('.$i.').amount'] = $tmp['receiverList.receiver('.$i.').amount'];
+                
+                if (!$hasPrimary
+                    && array_key_exists('receiverList.receiver('.$i.').primary', $checkoutParams) 
+                    && $checkoutParams['receiverList.receiver('.$i.').primary'] === 'true') {
+                    $parameters['receiverList.receiver('.$i.').primary'] = 'true';
+                    $hasPrimary = true;
+                }
+            }
+        }
+        if (!$hasPrimary) {
+            $parameters['receiverList.receiver(0).primary'] = 'true';
+        }
+        if (array_key_exists('feesPayer', $checkoutParams)) {
+            $parameters['feesPayer'] = $checkoutParams['feesPayer'];
+        }
+        if (array_key_exists('trackingId', $checkoutParams)) {
+            $parameters['trackingId'] = $checkoutParams['trackingId'];
+        }
+
+        $tokenResponse = $this->client->requestPay($parameters);
+        
+        $this->throwUnlessSuccessResponse($tokenResponse, $transaction);
+        
+        switch ($tokenResponse->body->get('paymentExecStatus')) {
+            case 'ERROR':
+                $ex = new FinancialException(sprintf('Pay action failed with "%s".', $tokenResponse->body->get('payErrorList')));
+                $transaction->setResponseCode($tokenResponse->body->get('paymentExecStatus'));
+                $transaction->setReasonCode('PaymentActionFailed');
+                $ex->setFinancialTransaction($transaction);
+        
+                throw $ex;
+        
+            case 'CREATED':
+                $token = $tokenResponse->body->get('payKey');
+                $actionRequest = new ActionRequiredException('User has not yet authorized the transaction.');
+                $actionRequest->setFinancialTransaction($transaction);
+                $actionRequest->setAction(new VisitUrl($this->client->getTokenAuthorizationUrl($token)));
+        
+                throw $actionRequest;
+
+            default:
+                $ex = new FinancialException(sprintf('Handling of response "%s" not implemented.', $tokenResponse->body->get('paymentExecStatus')));
+                $transaction->setResponseCode($tokenResponse->body->get('paymentExecStatus'));
+                $transaction->setReasonCode('PaymentActionFailed');
+                $ex->setFinancialTransaction($transaction);
+        
+                throw $ex;
+        }
     }
 
 //     public function credit(FinancialTransactionInterface $transaction, $retry)
@@ -94,142 +185,9 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         return false;
     }
 
-    protected function createCheckoutBillingAgreement(FinancialTransactionInterface $transaction, $paymentAction)
-    {
-        $data = $transaction->getExtendedData();
-
-        $token = $this->obtainExpressCheckoutToken($transaction, $paymentAction);
-        
-        // TODO have this transmitted automatically by client
-        // -H "X-PAYPAL-SECURITY-USERID: caller_1312486258_biz_api1.gmail.com" 
-        // -H "X-PAYPAL-SECURITY-PASSWORD: 1312486294" 
-        // -H "X-PAYPAL-SECURITY-SIGNATURE: AbtI7HV1xB428VygBUcIhARzxch4AL65.T18CTeylixNNxDZUu0iO87e" 
-        // -H "X-PAYPAL-REQUEST-DATA-FORMAT: JSON" 
-        // -H "X-PAYPAL-RESPONSE-DATA-FORMAT: JSON" 
-        // -H "X-PAYPAL-APPLICATION-ID: APP-80W284485P519543T
-        // https://svcs.sandbox.paypal.com/AdaptivePayments/Pay
-        
-        // TODO create client data as follows
-        // "{\"actionType\":\"PAY\", \"currencyCode\":\"USD\", 
-        // \"receiverList\":{\"receiver\":[{\"amount\":\"9.00\",
-        // \"email\":\"rec1_1312486368_biz@gmail.com\",\"primary\":\"true\"}], 
-        // \"receiver\":[{\"amount\":\"1.00\",\"email\":\"second@receiver.com\"}]}, 
-        // \"returnUrl\":\"http://www.example.com/success.html\", 
-        // \"cancelUrl\":\"http://www.example.com/failure.html\", 
-        // \"requestEnvelope\":{\"errorLanguage\":\"en_US\", 
-        // \"detailLevel\":\"ReturnAll\"}}
-        
-        $details = $this->client->requestGetExpressCheckoutDetails($token);
-        $this->throwUnlessSuccessResponse($details, $transaction);
-
-        // verify checkout status
-        switch ($details->body->get('CHECKOUTSTATUS')) {
-            case 'PaymentActionFailed':
-                $ex = new FinancialException('PaymentAction failed.');
-                $transaction->setResponseCode('Failed');
-                $transaction->setReasonCode('PaymentActionFailed');
-                $ex->setFinancialTransaction($transaction);
-
-                throw $ex;
-
-            case 'PaymentCompleted':
-                break;
-
-            case 'PaymentActionNotInitiated':
-                break;
-
-            default:
-                $actionRequest = new ActionRequiredException('User has not yet authorized the transaction.');
-                $actionRequest->setFinancialTransaction($transaction);
-                $actionRequest->setAction(new VisitUrl($this->client->getAuthenticateExpressCheckoutTokenUrl($token)));
-
-                throw $actionRequest;
-        }
-
-        // complete the transaction
-        $data->set('paypal_payer_id', $details->body->get('PAYERID'));
-
-        $parameters = array();
-        $parameters['PAYMENTREQUEST_0_CURRENCYCODE'] = $transaction->getPayment()->getPaymentInstruction()->getCurrency();
-        if (array_key_exists('PAYMENTREQUEST_0_SELLERPAYPALACCOUNTID', $data->get('checkout_params'))) {
-            $tmp = $data->get('checkout_params');
-            $parameters['PAYMENTREQUEST_0_SELLERPAYPALACCOUNTID'] = $tmp['PAYMENTREQUEST_0_SELLERPAYPALACCOUNTID'];
-        }
-
-        $response = $this->client->requestDoExpressCheckoutPayment(
-            $data->get('express_checkout_token'),
-            $transaction->getRequestedAmount(),
-            $paymentAction,
-            $details->body->get('PAYERID'),
-            $parameters
-        );
-        $this->throwUnlessSuccessResponse($response, $transaction);
-
-        switch($response->body->get('PAYMENTINFO_0_PAYMENTSTATUS')) {
-            case 'Completed':
-                break;
-
-            case 'Pending':
-                $transaction->setReferenceNumber($response->body->get('PAYMENTINFO_0_TRANSACTIONID'));
-                
-                throw new PaymentPendingException('Payment is still pending: '.$response->body->get('PAYMENTINFO_0_PENDINGREASON'));
-
-            default:
-                $ex = new FinancialException('PaymentStatus is not completed: '.$response->body->get('PAYMENTINFO_0_PAYMENTSTATUS'));
-                $ex->setFinancialTransaction($transaction);
-                $transaction->setResponseCode('Failed');
-                $transaction->setReasonCode($response->body->get('PAYMENTINFO_0_PAYMENTSTATUS'));
-
-                throw $ex;
-        }
-
-        $transaction->setReferenceNumber($response->body->get('PAYMENTINFO_0_TRANSACTIONID'));
-        $transaction->setProcessedAmount($response->body->get('PAYMENTINFO_0_AMT'));
-        $transaction->setResponseCode(PluginInterface::RESPONSE_CODE_SUCCESS);
-        $transaction->setReasonCode(PluginInterface::REASON_CODE_SUCCESS);
-    }
-
     /**
      * @param \JMS\Payment\CoreBundle\Model\FinancialTransactionInterface $transaction
-     * @param string $paymentAction
-     *
-     * @throws \JMS\Payment\CoreBundle\Plugin\Exception\ActionRequiredException if user has to authenticate the token
-     *
-     * @return string
-     */
-    protected function obtainExpressCheckoutToken(FinancialTransactionInterface $transaction, $paymentAction)
-    {
-        $data = $transaction->getExtendedData();
-        if ($data->has('express_checkout_token')) {
-            return $data->get('express_checkout_token');
-        }
-
-        $opts = $data->has('checkout_params') ? $data->get('checkout_params') : array();
-        $opts['PAYMENTREQUEST_0_PAYMENTACTION'] = $paymentAction;
-        $opts['PAYMENTREQUEST_0_CURRENCYCODE'] = $transaction->getPayment()->getPaymentInstruction()->getCurrency();
-
-        $response = $this->client->requestSetExpressCheckout(
-            $transaction->getRequestedAmount(),
-            $this->getReturnUrl($data),
-            $this->getCancelUrl($data),
-            $opts
-        );
-        $this->throwUnlessSuccessResponse($response, $transaction);
-
-        $data->set('express_checkout_token', $response->body->get('TOKEN'));
-
-        $authenticateTokenUrl = $this->client->getAuthenticateExpressCheckoutTokenUrl($response->body->get('TOKEN'));
-
-        $actionRequest = new ActionRequiredException('User must authorize the transaction.');
-        $actionRequest->setFinancialTransaction($transaction);
-        $actionRequest->setAction(new VisitUrl($authenticateTokenUrl));
-
-        throw $actionRequest;
-    }
-
-    /**
-     * @param \JMS\Payment\CoreBundle\Model\FinancialTransactionInterface $transaction
-     * @param \JMS\Payment\PaypalBundle\Client\Response $response
+     * @param \JMS\Payment\PaypalBundle\Client\Response\ResponseInterface $response
      * @return null
      * @throws \JMS\Payment\CoreBundle\Plugin\Exception\FinancialException
      */
@@ -239,10 +197,10 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
             return;
         }
 
-        $transaction->setResponseCode($response->body->get('ACK'));
-        $transaction->setReasonCode($response->body->get('L_ERRORCODE0'));
+        $transaction->setResponseCode($response->body->get('responseEnvelope.ack'));
+        $transaction->setReasonCode($response->body->get('payErrorList.payError(0).errorId'));
 
-        $ex = new FinancialException('PayPal-Response was not successful: '.$response);
+        $ex = new FinancialException('PayPal API call was not successful: '.$response);
         $ex->setFinancialTransaction($transaction);
 
         throw $ex;

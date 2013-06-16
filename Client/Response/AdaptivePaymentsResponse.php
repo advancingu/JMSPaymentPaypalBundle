@@ -1,11 +1,11 @@
 <?php
 
-namespace JMS\Payment\PaypalBundle\Client;
+namespace JMS\Payment\PaypalBundle\Client\Response;
 
 use Symfony\Component\HttpFoundation\ParameterBag;
 
 /*
- * Copyright 2010 Johannes M. Schmitt <schmittjoh@gmail.com>
+ * Copyright 2013 Markus Weiland <mweiland@graph-ix.net>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  * limitations under the License.
  */
 
-class Response
+class AdaptivePaymentsResponse implements ResponseInterface
 {
     public $body;
 
@@ -31,32 +31,32 @@ class Response
 
     public function isSuccess()
     {
-        $ack = $this->body->get('ACK');
+        $ack = $this->body->get('responseEnvelope.ack');
 
         return 'Success' === $ack || 'SuccessWithWarning' === $ack;
     }
 
     public function isPartialSuccess()
     {
-        return 'PartialSuccess' === $this->body->get('ACK');
+        return false;
     }
 
     public function isError()
     {
-        $ack = $this->body->get('ACK');
+        $ack = $this->body->get('responseEnvelope.ack');
 
-        return 'Failure' === $ack || 'FailureWithWarning' === $ack || 'Warning' === $ack;
+        return 'Failure' === $ack || 'FailureWithWarning' === $ack;
     }
 
     public function getErrors()
     {
         $errors = array();
         $i = 0;
-        while ($this->body->has('L_ERRORCODE'.$i)) {
+        while ($this->body->has('payErrorList.payError('.$i.').errorId')) {
             $errors[] = array(
-                'code' => $this->body->get('L_ERRORCODE'.$i),
-                'short_message' => $this->body->get('L_SHORTMESSAGE'.$i),
-                'long_message' => $this->body->get('L_LONGMESSAGE'.$i),
+                'code' => $this->body->get('payErrorList.payError('.$i.').errorId'),
+                'short_message' => $this->body->get('payErrorList.payError('.$i.').message'),
+                'long_message' => $this->body->get('payErrorList.payError('.$i.').message'),
             );
 
             $i++;
@@ -68,7 +68,7 @@ class Response
     public function __toString()
     {
         if ($this->isError()) {
-            $str = 'Debug-Token: '.$this->body->get('CORRELATIONID')."\n";
+            $str = 'Debug-Token: '.$this->body->get('responseEnvelope.correlationId')."\n";
 
             foreach ($this->getErrors() as $error) {
                 $str .= "{$error['code']}: {$error['short_message']} ({$error['long_message']})\n";

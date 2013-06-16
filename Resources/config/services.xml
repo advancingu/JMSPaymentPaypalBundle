@@ -11,13 +11,20 @@
         <parameter key="payment.paypal.express_checkout.cancel_url"></parameter>
 
         <parameter key="payment.paypal.authentication_strategy.token.class">JMS\Payment\PaypalBundle\Client\Authentication\TokenAuthenticationStrategy</parameter>
+        <parameter key="payment.paypal.authentication_strategy.application.class">JMS\Payment\PaypalBundle\Client\Authentication\TokenAuthenticationStrategy</parameter>
+        
+        <parameter key="payment.paypal.client.response.express_checkout.class">JMS\Payment\PaypalBundle\Client\Response\ExpressCheckoutResponse</parameter>
+        <parameter key="payment.paypal.client.response.adaptive_payments.class">JMS\Payment\PaypalBundle\Client\Response\AdaptivePaymentsResponse</parameter>
+        
         <parameter key="payment.paypal.username"></parameter>
         <parameter key="payment.paypal.password"></parameter>
         <parameter key="payment.paypal.signature"></parameter>
+        <parameter key="payment.paypal.application_id"></parameter>
         
         <parameter key="payment.form.paypal_express_checkout_type.class">JMS\Payment\PaypalBundle\Form\ExpressCheckoutType</parameter>
 
-        <parameter key="payment.paypal.client.class">JMS\Payment\PaypalBundle\Client\Client</parameter>
+        <parameter key="payment.paypal.client.express_checkout.class">JMS\Payment\PaypalBundle\Client\ExpressCheckoutClient</parameter>
+        <parameter key="payment.paypal.client.adaptive_payments.class">JMS\Payment\PaypalBundle\Client\AdaptivePaymentsClient</parameter>
     </parameters>
 
     <services>
@@ -27,12 +34,20 @@
             <argument>%payment.paypal.signature%</argument>
         </service>
 
+        <service id="payment.paypal.authentication_strategy.application" class="%payment.paypal.authentication_strategy.application.class%">
+            <argument>%payment.paypal.username%</argument>
+            <argument>%payment.paypal.password%</argument>
+            <argument>%payment.paypal.signature%</argument>
+            <argument>%payment.paypal.application_id%</argument>
+        </service>
+
         <service id="payment.paypal.authentication_strategy" alias="payment.paypal.authentication_strategy.token" />
 
         <service id="payment.plugin.paypal_express_checkout" class="%payment.plugin.paypal_express_checkout.class%">
             <argument>%payment.paypal.express_checkout.return_url%</argument>
             <argument>%payment.paypal.express_checkout.cancel_url%</argument>
             <argument type="service" id="payment.paypal.client" />
+            <argument>%payment.paypal.client.response.express_checkout.class%</argument>
             <tag name="payment.plugin" />
         </service>
 
@@ -40,11 +55,17 @@
             <argument>%payment.paypal.express_checkout.return_url%</argument>
             <argument>%payment.paypal.express_checkout.cancel_url%</argument>
             <argument type="service" id="payment.paypal.client" />
+            <argument>%payment.paypal.client.response.adaptive_payments.class%</argument>
             <tag name="payment.plugin" />
         </service>
 
-        <service id="payment.paypal.client" class="%payment.paypal.client.class%">
+        <service id="payment.paypal.client" class="%payment.paypal.client.express_checkout.class%">
             <argument type="service" id="payment.paypal.authentication_strategy" />
+            <argument>%payment.paypal.debug%</argument>
+        </service>
+        
+        <service id="payment.paypal.client.adaptive_payments" class="%payment.paypal.client.adaptive_payments.class%">
+            <argument type="service" id="payment.paypal.authentication_strategy.application" />
             <argument>%payment.paypal.debug%</argument>
         </service>
         

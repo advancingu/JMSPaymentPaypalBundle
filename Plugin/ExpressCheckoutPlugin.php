@@ -12,9 +12,10 @@ use JMS\Payment\CoreBundle\Plugin\Exception\Action\VisitUrl;
 use JMS\Payment\CoreBundle\Plugin\Exception\ActionRequiredException;
 use JMS\Payment\CoreBundle\Util\Number;
 use JMS\Payment\PaypalBundle\Client\Client;
-use JMS\Payment\PaypalBundle\Client\Response;
+use JMS\Payment\PaypalBundle\Client\Response\ResponseInterface as Response;
 
 /*
+ * Copyright 2013 Markus Weiland <mweiland@graph-ix.net>
  * Copyright 2010 Johannes M. Schmitt <schmittjoh@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +44,7 @@ class ExpressCheckoutPlugin extends AbstractPlugin
     protected $cancelUrl;
 
     /**
-     * @var \JMS\Payment\PaypalBundle\Client\Client
+     * @var \JMS\Payment\PaypalBundle\Client\ExpressCheckoutClient
      */
     protected $client;
 
@@ -180,7 +181,7 @@ class ExpressCheckoutPlugin extends AbstractPlugin
             default:
                 $actionRequest = new ActionRequiredException('User has not yet authorized the transaction.');
                 $actionRequest->setFinancialTransaction($transaction);
-                $actionRequest->setAction(new VisitUrl($this->client->getAuthenticateExpressCheckoutTokenUrl($token)));
+                $actionRequest->setAction(new VisitUrl($this->client->getTokenAuthorizationUrl($token)));
 
                 throw $actionRequest;
         }
@@ -257,7 +258,7 @@ class ExpressCheckoutPlugin extends AbstractPlugin
 
         $data->set('express_checkout_token', $response->body->get('TOKEN'));
 
-        $authenticateTokenUrl = $this->client->getAuthenticateExpressCheckoutTokenUrl($response->body->get('TOKEN'));
+        $authenticateTokenUrl = $this->client->getTokenAuthorizationUrl($response->body->get('TOKEN'));
 
         $actionRequest = new ActionRequiredException('User must authorize the transaction.');
         $actionRequest->setFinancialTransaction($transaction);
@@ -268,7 +269,7 @@ class ExpressCheckoutPlugin extends AbstractPlugin
 
     /**
      * @param \JMS\Payment\CoreBundle\Model\FinancialTransactionInterface $transaction
-     * @param \JMS\Payment\PaypalBundle\Client\Response $response
+     * @param \JMS\Payment\PaypalBundle\Client\Response\ResponseInterface $response
      * @return null
      * @throws \JMS\Payment\CoreBundle\Plugin\Exception\FinancialException
      */

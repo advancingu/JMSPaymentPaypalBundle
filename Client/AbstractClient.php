@@ -23,151 +23,46 @@ use JMS\Payment\PaypalBundle\Client\Authentication\AuthenticationStrategyInterfa
  * limitations under the License.
  */
 
-class Client
+abstract class AbstractClient
 {
-    const API_VERSION = '65.1';
-
     protected $authenticationStrategy;
 
     protected $isDebug;
 
     protected $curlOptions;
+    
+    /** @var $responseClass string */
+    protected $responseClass;
 
-    public function __construct(AuthenticationStrategyInterface $authenticationStrategy, $isDebug)
+    public function __construct(AuthenticationStrategyInterface $authenticationStrategy, $isDebug, $responseClass)
     {
         $this->authenticationStrategy = $authenticationStrategy;
         $this->isDebug = !!$isDebug;
         $this->curlOptions = array();
-    }
-
-    public function requestAddressVerify($email, $street, $postalCode)
-    {
-        return $this->sendApiRequest(array(
-            'METHOD' => 'AddressVerify',
-            'EMAIL'  => $email,
-            'STREET' => $street,
-            'ZIP'    => $postalCode,
-        ));
-    }
-
-    public function requestBillOutstandingAmount($profileId, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'BillOutstandingAmount',
-            'PROFILEID' => $profileId,
-        )));
-    }
-
-    public function requestCreateRecurringPaymentsProfile($token)
-    {
-        return $this->sendApiRequest(array(
-            'METHOD' => 'CreateRecurringPaymentsProfile',
-            'TOKEN' => $token,
-        ));
-    }
-
-    public function requestDoAuthorization($transactionId, $amount, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'DoAuthorization',
-            'TRANSACTIONID' => $transactionId,
-            'AMT' => $this->convertAmountToPaypalFormat($amount),
-        )));
-    }
-
-    public function requestDoCapture($authorizationId, $amount, $completeType, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'DoCapture',
-            'AUTHORIZATIONID' => $authorizationId,
-            'AMT' => $this->convertAmountToPaypalFormat($amount),
-            'COMPLETETYPE' => $completeType,
-        )));
-    }
-
-    public function requestDoDirectPayment($ipAddress, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'DoDirectPayment',
-            'IPADDRESS' => $ipAddress,
-        )));
-    }
-
-    public function requestDoExpressCheckoutPayment($token, $amount, $paymentAction, $payerId, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'DoExpressCheckoutPayment',
-            'TOKEN'  => $token,
-            'PAYMENTREQUEST_0_AMT' => $this->convertAmountToPaypalFormat($amount),
-            'PAYMENTREQUEST_0_PAYMENTACTION' => $paymentAction,
-            'PAYERID' => $payerId,
-        )));
-    }
-
-    public function requestDoVoid($authorizationId, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'DoVoid',
-            'AUTHORIZATIONID' => $authorizationId,
-        )));
+        $this->responseClass = $responseClass;
     }
 
     /**
-     * Initiates an ExpressCheckout payment process
-     *
-     * Optional parameters can be found here:
-     * https://cms.paypal.com/us/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_api_nvp_r_SetExpressCheckout
-     *
-     * @param float $amount
-     * @param string $returnUrl
-     * @param string $cancelUrl
-     * @param array $optionalParameters
-     * @return Response
+     * Sends a request with $parameters to PayPal API.
+     * Add any constant client parameters and headers here and then call the 
+     * request implementation executeSendApiRequest().
+     * 
+     * @param array $parameters
+     * @return JMS\Payment\PaypalBundle\Client\Response\ResponseInterface
      */
-    public function requestSetExpressCheckout($amount, $returnUrl, $cancelUrl, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'SetExpressCheckout',
-            'PAYMENTREQUEST_0_AMT' => $this->convertAmountToPaypalFormat($amount),
-            'RETURNURL' => $returnUrl,
-            'CANCELURL' => $cancelUrl,
-        )));
-    }
-
-    public function requestGetExpressCheckoutDetails($token)
-    {
-        return $this->sendApiRequest(array(
-            'METHOD' => 'GetExpressCheckoutDetails',
-            'TOKEN'  => $token,
-        ));
-    }
-
-    public function requestGetTransactionDetails($transactionId)
-    {
-        return $this->sendApiRequest(array(
-            'METHOD' => 'GetTransactionDetails',
-            'TRANSACTIONID' => $transactionId,
-        ));
-    }
-
-    public function requestRefundTransaction($transactionId, array $optionalParameters = array())
-    {
-        return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'METHOD' => 'RefundTransaction',
-            'TRANSACTIONID' => $transactionId
-        )));
-    }
-
     public function sendApiRequest(array $parameters)
     {
-        // include some default parameters
-        $parameters['VERSION'] = self::API_VERSION;
-
+        throw new \RuntimeException('Method "sendApiRequest()" must be implemented in a subclass of AbstractClient.');
+    }
+    
+    protected function executeSendApiRequest(array $parameters, array $headers = array())
+    {
         // setup request, and authenticate it
         $request = new Request(
             $this->authenticationStrategy->getApiEndpoint($this->isDebug),
             'POST',
-            $parameters
+            $parameters,
+            $headers
         );
         $this->authenticationStrategy->authenticate($request);
 
@@ -179,18 +74,17 @@ class Client
         $parameters = array();
         parse_str($response->getContent(), $parameters);
 
-        return new Response($parameters);
+        $r = new ReflectionClass($this->responseClass);
+        return $r->newInstanceArgs($parameters);
     }
-
+    
+    /**
+     * @param string $token
+     * @return string URL to call in order to authorize the payment represented by $token
+     */
     public function getAuthenticateExpressCheckoutTokenUrl($token)
     {
-        $host = $this->isDebug ? 'www.sandbox.paypal.com' : 'www.paypal.com';
-
-        return sprintf(
-            'https://%s/cgi-bin/webscr?cmd=_express-checkout&token=%s',
-            $host,
-            $token
-        );
+        throw new \RuntimeException('Method "getAuthenticateExpressCheckoutTokenUrl($token)" must be implemented in a subclass of AbstractClient.');
     }
 
     public function convertAmountToPaypalFormat($amount)
