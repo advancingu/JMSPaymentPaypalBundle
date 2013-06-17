@@ -11,7 +11,7 @@ use JMS\Payment\CoreBundle\Plugin\Exception\FinancialException;
 use JMS\Payment\CoreBundle\Plugin\Exception\Action\VisitUrl;
 use JMS\Payment\CoreBundle\Plugin\Exception\ActionRequiredException;
 use JMS\Payment\CoreBundle\Util\Number;
-use JMS\Payment\PaypalBundle\Client\Client;
+use JMS\Payment\PaypalBundle\Client\AdaptivePaymentsClient as Client;
 use JMS\Payment\PaypalBundle\Client\Response\ResponseInterface as Response;
 
 /*
@@ -54,7 +54,7 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
     /**
      * @param string $returnUrl
      * @param string $cancelUrl
-     * @param \JMS\Payment\PaypalBundle\Client\Client $client
+     * @param \JMS\Payment\PaypalBundle\Client\AdaptivePaymentsClient $client
      */
     public function __construct($returnUrl, $cancelUrl, Client $client)
     {

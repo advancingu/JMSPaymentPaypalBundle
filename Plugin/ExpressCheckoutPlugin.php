@@ -11,7 +11,7 @@ use JMS\Payment\CoreBundle\Plugin\Exception\FinancialException;
 use JMS\Payment\CoreBundle\Plugin\Exception\Action\VisitUrl;
 use JMS\Payment\CoreBundle\Plugin\Exception\ActionRequiredException;
 use JMS\Payment\CoreBundle\Util\Number;
-use JMS\Payment\PaypalBundle\Client\Client;
+use JMS\Payment\PaypalBundle\Client\ExpressCheckoutClient as Client;
 use JMS\Payment\PaypalBundle\Client\Response\ResponseInterface as Response;
 
 /*
@@ -51,7 +51,7 @@ class ExpressCheckoutPlugin extends AbstractPlugin
     /**
      * @param string $returnUrl
      * @param string $cancelUrl
-     * @param \JMS\Payment\PaypalBundle\Client\Client $client
+     * @param \JMS\Payment\PaypalBundle\Client\ExpressCheckoutClient $client
      */
     public function __construct($returnUrl, $cancelUrl, Client $client)
     {
