@@ -11,7 +11,7 @@
         <parameter key="payment.paypal.express_checkout.cancel_url"></parameter>
 
         <parameter key="payment.paypal.authentication_strategy.token.class">JMS\Payment\PaypalBundle\Client\Authentication\TokenAuthenticationStrategy</parameter>
-        <parameter key="payment.paypal.authentication_strategy.application.class">JMS\Payment\PaypalBundle\Client\Authentication\TokenAuthenticationStrategy</parameter>
+        <parameter key="payment.paypal.authentication_strategy.application.class">JMS\Payment\PaypalBundle\Client\Authentication\ApplicationAuthenticationStrategy</parameter>
         
         <parameter key="payment.paypal.client.response.express_checkout.class">JMS\Payment\PaypalBundle\Client\Response\ExpressCheckoutResponse</parameter>
         <parameter key="payment.paypal.client.response.adaptive_payments.class">JMS\Payment\PaypalBundle\Client\Response\AdaptivePaymentsResponse</parameter>
