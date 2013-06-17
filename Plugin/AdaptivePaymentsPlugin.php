@@ -111,8 +111,8 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
             if (array_key_exists('receiverList.receiver('.$i.').email', $checkoutParams)
                 && array_key_exists('receiverList.receiver('.$i.').amount', $checkoutParams)) {
                 
-                $parameters['receiverList.receiver('.$i.').email'] = $tmp['receiverList.receiver('.$i.').email'];
-                $parameters['receiverList.receiver('.$i.').amount'] = $tmp['receiverList.receiver('.$i.').amount'];
+                $parameters['receiverList.receiver('.$i.').email'] = $checkoutParams['receiverList.receiver('.$i.').email'];
+                $parameters['receiverList.receiver('.$i.').amount'] = $checkoutParams['receiverList.receiver('.$i.').amount'];
                 
                 if (!$hasPrimary
                     && array_key_exists('receiverList.receiver('.$i.').primary', $checkoutParams) 
