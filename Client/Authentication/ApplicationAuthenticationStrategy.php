@@ -38,8 +38,8 @@ class ApplicationAuthenticationStrategy implements AuthenticationStrategyInterfa
 
     public function authenticate(Request $request)
     {
-        $request->headers->set('X-PAYPAL-SECURITY-USERID', $this->password);
-        $request->headers->set('X-PAYPAL-SECURITY-PASSWORD', $this->username);
+        $request->headers->set('X-PAYPAL-SECURITY-USERID', $this->username);
+        $request->headers->set('X-PAYPAL-SECURITY-PASSWORD', $this->password);
         $request->headers->set('X-PAYPAL-SECURITY-SIGNATURE', $this->signature);
         $request->headers->set('X-PAYPAL-APPLICATION-ID', $this->applicationId);
     }
