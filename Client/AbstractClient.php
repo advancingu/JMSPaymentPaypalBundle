@@ -74,7 +74,7 @@ abstract class AbstractClient
         $parameters = array();
         parse_str($response->getContent(), $parameters);
 
-        $r = new ReflectionClass($this->responseClass);
+        $r = new \ReflectionClass($this->responseClass);
         return $r->newInstanceArgs($parameters);
     }
     
