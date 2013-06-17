@@ -71,7 +71,7 @@ abstract class AbstractClient
     {
         $url = $this->authenticationStrategy->getApiEndpoint($this->isDebug);
         if (array_key_exists('actionPath', $parameters)) {
-            $url += '/' . $parameters['actionPath'];
+            $url .= '/' . $parameters['actionPath'];
         }
         // setup request, and authenticate it
         $request = new Request(
