@@ -198,8 +198,12 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         }
 
         $transaction->setResponseCode($response->body->get('responseEnvelope.ack'));
-        $transaction->setReasonCode($response->body->get('payErrorList.payError(0).errorId'));
-
+        if ($response->body->has('payErrorList.payError(0).errorId')) {
+            $transaction->setReasonCode($response->body->get('payErrorList.payError(0).errorId'));
+        } else if ($response->body->get('error(0).errorId')) {
+            $transaction->setReasonCode($response->body->get('error(0).errorId'));
+        }
+        
         $ex = new FinancialException('PayPal API call was not successful: '.$response);
         $ex->setFinancialTransaction($transaction);
 
