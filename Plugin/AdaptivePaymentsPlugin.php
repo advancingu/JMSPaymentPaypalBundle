@@ -99,7 +99,7 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         $parameters['returnUrl'] = $this->getReturnUrl($data);
         
         $checkoutParams = $data->get('checkout_params');
-        $parameters['requestenvelope.errorLanguage'] = $checkoutParams['requestenvelope.errorLanguage'];
+        $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
         $parameters['currencyCode'] = $transaction->getPayment()->getPaymentInstruction()->getCurrency();
         $parameters['receiverList.receiver(0).email'] = $checkoutParams['receiverList.receiver(0).email'];
         $parameters['receiverList.receiver(0).amount'] = $checkoutParams['receiverList.receiver(0).amount'];
