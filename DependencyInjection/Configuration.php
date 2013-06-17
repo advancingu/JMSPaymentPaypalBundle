@@ -32,6 +32,7 @@ class Configuration
                     ->scalarNode('username')->isRequired()->cannotBeEmpty()->end()
                     ->scalarNode('password')->isRequired()->cannotBeEmpty()->end()
                     ->scalarNode('signature')->isRequired()->cannotBeEmpty()->end()
+                    ->scalarNode('application_id')->defaultNull()->cannotBeEmpty()->end()
                     ->scalarNode('return_url')->defaultNull()->end()
                     ->scalarNode('cancel_url')->defaultNull()->end()
                     ->booleanNode('debug')->defaultValue('%kernel.debug%')->end()
