@@ -47,7 +47,6 @@
             <argument>%payment.paypal.express_checkout.return_url%</argument>
             <argument>%payment.paypal.express_checkout.cancel_url%</argument>
             <argument type="service" id="payment.paypal.client" />
-            <argument>%payment.paypal.client.response.express_checkout.class%</argument>
             <tag name="payment.plugin" />
         </service>
 
@@ -55,18 +54,19 @@
             <argument>%payment.paypal.express_checkout.return_url%</argument>
             <argument>%payment.paypal.express_checkout.cancel_url%</argument>
             <argument type="service" id="payment.paypal.client" />
-            <argument>%payment.paypal.client.response.adaptive_payments.class%</argument>
             <tag name="payment.plugin" />
         </service>
 
         <service id="payment.paypal.client" class="%payment.paypal.client.express_checkout.class%">
             <argument type="service" id="payment.paypal.authentication_strategy" />
             <argument>%payment.paypal.debug%</argument>
+            <argument>%payment.paypal.client.response.express_checkout.class%</argument>
         </service>
         
         <service id="payment.paypal.client.adaptive_payments" class="%payment.paypal.client.adaptive_payments.class%">
             <argument type="service" id="payment.paypal.authentication_strategy.application" />
             <argument>%payment.paypal.debug%</argument>
+            <argument>%payment.paypal.client.response.adaptive_payments.class%</argument>
         </service>
         
         <service id="payment.form.paypal_express_checkout_type" class="%payment.form.paypal_express_checkout_type.class%">
