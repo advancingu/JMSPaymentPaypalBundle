@@ -18,7 +18,7 @@ namespace JMS\Payment\PaypalBundle\Client\Response;
  * limitations under the License.
  */
 
-class ResponseInterface
+interface ResponseInterface
 {
     /**
      * @param array $parameters
