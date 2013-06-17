@@ -53,7 +53,7 @@
         <service id="payment.plugin.paypal_adaptive_payments" class="%payment.plugin.paypal_adaptive_payments.class%">
             <argument>%payment.paypal.express_checkout.return_url%</argument>
             <argument>%payment.paypal.express_checkout.cancel_url%</argument>
-            <argument type="service" id="payment.paypal.client" />
+            <argument type="service" id="payment.paypal.client.adaptive_payments" />
             <tag name="payment.plugin" />
         </service>
 
