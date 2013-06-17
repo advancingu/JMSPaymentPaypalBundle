@@ -87,9 +87,8 @@ abstract class AbstractClient
             throw new CommunicationException('The API request was not successful (Status: '.$response->getStatus().'): '.$response->getContent());
         }
 
-        $parameters = array();
-        parse_str($response->getContent(), $parameters);
-
+        $parameters = $this->decodeResponse($response->getContent());
+        
         $r = new \ReflectionClass($this->responseClass);
         return $r->newInstanceArgs(array($parameters));
     }
@@ -127,6 +126,29 @@ abstract class AbstractClient
         }
 
         return substr($encoded, 1);
+    }
+
+    /**
+     * Parses a URL encoded argument string of a PayPal NV response 
+     * into a key-value array.
+     * 
+     * Compared to parse_str, this function preserves '.' characters 
+     * in keys.
+     * 
+     * @param string $response
+     * @return string:string
+     */
+    protected function decodeResponse($response)
+    {
+        $params = explode('&', $response);
+        $responseArray = array();
+        foreach ($params as $param) {
+            $keyVal = explode('=', $param);
+            $key = urldecode($keyVal[0]);
+            $value = urldecode($keyVal[1]);
+            $responseArray[$key] = $value;
+        }
+        return $responseArray;
     }
 
     /**
