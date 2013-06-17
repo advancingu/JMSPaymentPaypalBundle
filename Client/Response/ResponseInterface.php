@@ -21,37 +21,32 @@ namespace JMS\Payment\PaypalBundle\Client\Response;
 interface ResponseInterface
 {
     /**
+     * @param array $parameters
+     */
+    public function __construct(array $parameters);
+    
+    /**
      * @return boolean
      */
-    public function isSuccess()
-    {
-    }
+    public function isSuccess();
 
     /**
      * @return boolean
      */
-    public function isPartialSuccess()
-    {
-    }
+    public function isPartialSuccess();
 
     /**
      * @return boolean
      */
-    public function isError()
-    {
-    }
+    public function isError();
 
     /**
      * @return array(string:string)
      */
-    public function getErrors()
-    {
-    }
+    public function getErrors();
 
     /**
      * @return string
      */
-    public function __toString()
-    {
-    }
+    public function __toString();
 }
