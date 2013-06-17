@@ -55,11 +55,27 @@ abstract class AbstractClient
         throw new \RuntimeException('Method "sendApiRequest()" must be implemented in a subclass of AbstractClient.');
     }
     
+    /**
+     * Executes a request to the PayPal API.
+     * 
+     * Add a parameter 'actionPath' to specify a path relative to the URL provided 
+     * by authenticationStrategy if an action requires a specific sub-path to be 
+     * called.
+     * 
+     * @param array $parameters
+     * @param array $headers
+     * @throws CommunicationException Thrown if server did not return status code 200.
+     * @return JMS\Payment\PaypalBundle\Client\Response\ResponseInterface
+     */
     protected function executeSendApiRequest(array $parameters, array $headers = array())
     {
+        $url = $this->authenticationStrategy->getApiEndpoint($this->isDebug);
+        if (array_key_exists('actionPath', $parameters)) {
+            $url += '/' . $parameters['actionPath'];
+        }
         // setup request, and authenticate it
         $request = new Request(
-            $this->authenticationStrategy->getApiEndpoint($this->isDebug),
+            $url,
             'POST',
             $parameters,
             $headers

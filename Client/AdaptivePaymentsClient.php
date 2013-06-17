@@ -29,6 +29,7 @@ class AdaptivePaymentsClient extends AbstractClient
     {
         return $this->sendApiRequest(array_merge($optionalParameters, array(
             'actionType' => 'PAY',
+            'actionPath' => 'Pay',
         )));
     }
 
