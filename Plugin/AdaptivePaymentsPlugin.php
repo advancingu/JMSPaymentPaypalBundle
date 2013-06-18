@@ -70,35 +70,27 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
     public function approveAndDeposit(FinancialTransactionInterface $transaction, $retry)
     {
         $data = $transaction->getExtendedData();
+        $checkoutParams = $data->get('checkout_params');
         
-        // check if this is the second call, after payer comes back from PayPal; token should now be authorized and money already deposited
+        // check if this is the second call, after payer comes back from PayPal; the money should now already be deposited
         // @see Explicit Approval Payment Flow at https://developer.paypal.com/webapps/developer/docs/classic/adaptive-payments/integration-guide/APIntro/
         if ($transaction->getState() === FinancialTransactionInterface::STATE_PENDING)
         {
-            
-            // TODO can we get this data via extendedData?
-//             $i = 0;
-//             $amount = 0;
-//             while ($response->body->has('paymentInfoList.paymentInfo('.$i.').receiver.amount')) {
-//                 $amount += $response->body->get('paymentInfoList.paymentInfo('.$i.').receiver.amount');
-            
-//                 $i++;
-//             }
-            
-            $transaction->setReferenceNumber($response->body->get('payKey'));
-//             $transaction->setProcessedAmount($amount);
-            $transaction->setResponseCode(PluginInterface::RESPONSE_CODE_SUCCESS);
-            $transaction->setReasonCode(PluginInterface::REASON_CODE_SUCCESS);
-            
+            if ($this->isTransactionCompleted($transaction))
+            {
+                $amount = $checkoutParams['receiverList.receiver(0).amount'];
+                $transaction->setProcessedAmount($amount);
+                $transaction->setResponseCode(PluginInterface::RESPONSE_CODE_SUCCESS);
+                $transaction->setReasonCode(PluginInterface::REASON_CODE_SUCCESS);
+            }
+
             return;
         }
-        
 
         $parameters = array();
         $parameters['cancelUrl'] = $this->getCancelUrl($data);
         $parameters['returnUrl'] = $this->getReturnUrl($data);
         
-        $checkoutParams = $data->get('checkout_params');
         $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
         $parameters['currencyCode'] = $transaction->getPayment()->getPaymentInstruction()->getCurrency();
         $parameters['receiverList.receiver(0).email'] = $checkoutParams['receiverList.receiver(0).email'];
@@ -183,6 +175,25 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
     public function isIndependentCreditSupported()
     {
         return false;
+    }
+
+    /**
+     * @param FinancialTransactionInterface $transaction
+     * @return boolean True, if PayPal returns "COMPLETED" status for $transaction
+     */
+    protected function isTransactionCompleted(FinancialTransactionInterface $transaction)
+    {
+        $data = $transaction->getExtendedData();
+        $checkoutParams = $data->get('checkout_params');
+        
+        $parameters = array();
+        $parameters['payKey'] = $data->get('payToken');
+        $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
+        $detailsResponse = $this->client->requestPaymentDetails($parameters);
+        
+        $this->throwUnlessSuccessResponse($detailsResponse, $transaction);
+        
+        return ($detailsResponse->body->get('status') === 'COMPLETED');
     }
 
     /**
