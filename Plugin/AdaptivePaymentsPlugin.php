@@ -140,6 +140,7 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         
             case 'CREATED':
                 $token = $tokenResponse->body->get('payKey');
+                $data->set('payKey', $token);
                 $actionRequest = new ActionRequiredException('User has not yet authorized the transaction.');
                 $actionRequest->setFinancialTransaction($transaction);
                 $actionRequest->setAction(new VisitUrl($this->client->getTokenAuthorizationUrl($token)));
@@ -188,7 +189,7 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         $checkoutParams = $data->get('checkout_params');
         
         $parameters = array();
-        $parameters['payKey'] = $data->get('payToken');
+        $parameters['payKey'] = $data->get('payKey');
         $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
         $detailsResponse = $this->client->requestPaymentDetails($parameters);
         
