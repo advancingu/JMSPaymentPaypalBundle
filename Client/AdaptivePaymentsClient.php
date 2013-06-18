@@ -8,6 +8,7 @@ use JMS\Payment\CoreBundle\Plugin\Exception\CommunicationException;
 use JMS\Payment\PaypalBundle\Client\Authentication\AuthenticationStrategyInterface;
 
 /*
+ * Copyright 2013 Markus Weiland <mweiland@graph-ix.net>
  * Copyright 2010 Johannes M. Schmitt <schmittjoh@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

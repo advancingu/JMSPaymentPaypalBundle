@@ -9,6 +9,7 @@ use JMS\Payment\PaypalBundle\Client\Authentication\AuthenticationStrategyInterfa
 
 /*
  * Copyright 2010 Johannes M. Schmitt <schmittjoh@gmail.com>
+ * Copyright 2013 Markus Weiland <mweiland@graph-ix.net>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
