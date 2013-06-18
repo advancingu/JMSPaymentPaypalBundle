@@ -88,6 +88,7 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         }
 
         $parameters = array();
+        $parameters['actionType'] = 'PAY'; // we'd actually prefer CREATE, however it doesn't work as documented
         $parameters['cancelUrl'] = $this->getCancelUrl($data);
         $parameters['returnUrl'] = $this->getReturnUrl($data);
         
