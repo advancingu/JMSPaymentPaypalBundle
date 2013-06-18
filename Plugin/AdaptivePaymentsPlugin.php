@@ -124,7 +124,10 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         if (array_key_exists('trackingId', $checkoutParams)) {
             $parameters['trackingId'] = $checkoutParams['trackingId'];
         }
-
+        if (array_key_exists('memo', $checkoutParams)) {
+            $parameters['memo'] = $checkoutParams['memo'];
+        }
+        
         $tokenResponse = $this->client->requestPay($parameters);
         
         $this->throwUnlessSuccessResponse($tokenResponse, $transaction);
