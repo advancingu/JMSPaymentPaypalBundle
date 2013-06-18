@@ -29,11 +29,24 @@ class AdaptivePaymentsClient extends AbstractClient
     public function requestPay(array $optionalParameters = array())
     {
         return $this->sendApiRequest(array_merge($optionalParameters, array(
-            'actionType' => 'PAY',
             'actionPath' => 'Pay',
         )));
     }
 
+    public function requestExecutePayment(array $optionalParameters = array())
+    {
+        return $this->sendApiRequest(array_merge($optionalParameters, array(
+            'actionPath' => 'ExecutePayment',
+        )));
+    }
+
+    public function requestPaymentDetails(array $optionalParameters = array())
+    {
+        return $this->sendApiRequest(array_merge($optionalParameters, array(
+            'actionPath' => 'PaymentDetails',
+        )));
+    }
+    
     public function sendApiRequest(array $parameters)
     {
         // include some default parameters
