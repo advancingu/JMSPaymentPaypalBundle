@@ -142,13 +142,7 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
                 throw $ex;
         
             case 'CREATED':
-                $token = $tokenResponse->body->get('payKey');
-                $data->set('payKey', $token);
-                $actionRequest = new ActionRequiredException('User has not yet authorized the transaction.');
-                $actionRequest->setFinancialTransaction($transaction);
-                $actionRequest->setAction(new VisitUrl($this->client->getTokenAuthorizationUrl($token)));
-        
-                throw $actionRequest;
+                break;
 
             default:
                 $ex = new FinancialException(sprintf('Handling of response "%s" not implemented.', $tokenResponse->body->get('paymentExecStatus')));
@@ -158,6 +152,58 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         
                 throw $ex;
         }
+
+        $payKey = $tokenResponse->body->get('payKey');
+        $data->set('payKey', $payKey);
+        
+        // now apply any payment options
+        $paymentParams = $data->get('payment_params');
+        $parameters = array();
+        
+        if (array_key_exists('displayOptions.businessName', $paymentParams)) {
+            $parameters['displayOptions.businessName'] = $paymentParams['displayOptions.businessName'];
+        }
+        if (array_key_exists('receiverOptions.description', $paymentParams)) {
+            $parameters['receiverOptions.description'] = $paymentParams['receiverOptions.description'];
+        }
+        if (array_key_exists('receiverOptions.customId', $paymentParams)) {
+            $parameters['receiverOptions.customId'] = $paymentParams['receiverOptions.customId'];
+        }
+        
+        $i = 0;
+        while (count(preg_grep("/^receiverOptions.invoiceData.item\(".$i."\)/", array_keys($paymentParams))) > 0) {
+            $item = 'receiverOptions.invoiceData.item('.$i.')';
+            if (array_key_exists($item . '.name', $paymentParams)) {
+                $parameters[$item . '.name'] = $paymentParams[$item . '.name'];
+            }
+            if (array_key_exists($item . '.itemPrice', $paymentParams)) {
+                $parameters[$item . '.itemPrice'] = $paymentParams[$item . '.itemPrice'];
+            }
+            if (array_key_exists($item . '.itemCount', $paymentParams)) {
+                $parameters[$item . '.itemCount'] = $paymentParams[$item . '.itemCount'];
+            }
+            if (array_key_exists($item . '.identifier', $paymentParams)) {
+                $parameters[$item . '.identifier'] = $paymentParams[$item . '.identifier'];
+            }
+            $i++;
+        }
+        
+        $parameters['receiverOptions.receiver(0).email'] = $checkoutParams['receiverList.receiver(0).email'];
+        
+        if (count($parameters) > 0) {
+            $parameters['payKey'] = $payKey;
+            $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
+            
+            $optionsResponse = $this->client->requestSetPaymentOptions($parameters);
+            $this->throwUnlessSuccessResponse($optionsResponse, $transaction);
+        }
+                
+        // return to user for payKey authorization
+        $actionRequest = new ActionRequiredException('User has not yet authorized the transaction.');
+        $actionRequest->setFinancialTransaction($transaction);
+        $actionRequest->setAction(new VisitUrl($this->client->getTokenAuthorizationUrl($payKey)));
+        
+        throw $actionRequest;
     }
 
 //     public function credit(FinancialTransactionInterface $transaction, $retry)

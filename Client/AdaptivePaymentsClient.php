@@ -47,6 +47,13 @@ class AdaptivePaymentsClient extends AbstractClient
         )));
     }
     
+    public function requestSetPaymentOptions(array $optionalParameters = array())
+    {
+        return $this->sendApiRequest(array_merge($optionalParameters, array(
+            'actionPath' => 'SetPaymentOptions',
+        )));
+    }
+    
     public function sendApiRequest(array $parameters)
     {
         // include some default parameters
