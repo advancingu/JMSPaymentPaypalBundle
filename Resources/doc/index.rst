@@ -15,6 +15,7 @@ Configuration
         username: your api username (not your account username)
         password: your api password (not your account password)
         signature: your api signature
+        application_id: your app ID (configurable under "Classic API apps")
         debug: true/false # when true, connect to PayPal sandbox; uses kernel debug value when not specified
 
 
@@ -33,5 +34,7 @@ integrity checks to validate transactions. If you don't need these checks, and o
 an easy way to communicate with the Paypal API, then you can use the plugin directly::
 
     $plugin = $container->get('payment.plugin.paypal_express_checkout');
+    or
+    $plugin = $container->get('payment.plugin.paypal_adaptive_payments');
 
 .. _JMSPaymentCoreBundle: https://github.com/schmittjoh/JMSPaymentCoreBundle/blob/master/Resources/doc/index.rst
