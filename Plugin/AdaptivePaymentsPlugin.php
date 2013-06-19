@@ -188,6 +188,9 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
             if (array_key_exists($item . '.itemCount', $paymentParams)) {
                 $parameters[$item . '.itemCount'] = $paymentParams[$item . '.itemCount'];
             }
+            if (array_key_exists($item . '.price', $paymentParams)) {
+                $parameters[$item . '.price'] = $paymentParams[$item . '.price'];
+            }
             if (array_key_exists($item . '.identifier', $paymentParams)) {
                 $parameters[$item . '.identifier'] = $paymentParams[$item . '.identifier'];
             }
