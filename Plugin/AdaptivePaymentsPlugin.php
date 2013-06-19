@@ -92,7 +92,6 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         $parameters['cancelUrl'] = $this->getCancelUrl($data);
         $parameters['returnUrl'] = $this->getReturnUrl($data);
         
-        $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
         $parameters['currencyCode'] = $transaction->getPayment()->getPaymentInstruction()->getCurrency();
         $parameters['receiverList.receiver(0).email'] = $checkoutParams['receiverList.receiver(0).email'];
         $parameters['receiverList.receiver(0).amount'] = $checkoutParams['receiverList.receiver(0).amount'];
@@ -126,6 +125,9 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         }
         if (array_key_exists('memo', $checkoutParams)) {
             $parameters['memo'] = $checkoutParams['memo'];
+        }
+        if (array_key_exists('requestEnvelope.errorLanguage', $checkoutParams)) {
+            $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
         }
         
         $tokenResponse = $this->client->requestPay($parameters);
@@ -201,7 +203,9 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         
         if (count($parameters) > 0) {
             $parameters['payKey'] = $payKey;
-            $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
+            if (array_key_exists('requestEnvelope.errorLanguage', $checkoutParams)) {
+                $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
+            }
             
             $optionsResponse = $this->client->requestSetPaymentOptions($parameters);
             $this->throwUnlessSuccessResponse($optionsResponse, $transaction);
@@ -248,7 +252,9 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         
         $parameters = array();
         $parameters['payKey'] = $data->get('payKey');
-        $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
+        if (array_key_exists('requestEnvelope.errorLanguage', $checkoutParams)) {
+            $parameters['requestEnvelope.errorLanguage'] = $checkoutParams['requestEnvelope.errorLanguage'];
+        }
         $detailsResponse = $this->client->requestPaymentDetails($parameters);
         
         $this->throwUnlessSuccessResponse($detailsResponse, $transaction);

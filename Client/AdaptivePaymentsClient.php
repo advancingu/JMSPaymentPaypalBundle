@@ -57,7 +57,10 @@ class AdaptivePaymentsClient extends AbstractClient
     public function sendApiRequest(array $parameters)
     {
         // include some default parameters
-//         $parameters['VERSION'] = self::API_VERSION;
+        if (count(preg_grep("/^requestEnvelope\./", array_keys($parameters))) == 0)
+        {
+            $parameters['requestEnvelope.errorLanguage'] = 'en_US';
+        }
 
         $headers = array();
         $headers['X-PAYPAL-REQUEST-DATA-FORMAT'] = 'NV';
