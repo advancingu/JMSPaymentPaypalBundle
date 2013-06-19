@@ -169,6 +169,12 @@ class AdaptivePaymentsPlugin extends AbstractPlugin
         if (array_key_exists('receiverOptions.customId', $paymentParams)) {
             $parameters['receiverOptions.customId'] = $paymentParams['receiverOptions.customId'];
         }
+        if (array_key_exists('receiverOptions.invoiceData.totalTax', $paymentParams)) {
+            $parameters['receiverOptions.invoiceData.totalTax'] = $paymentParams['receiverOptions.invoiceData.totalTax'];
+        }
+        if (array_key_exists('receiverOptions.invoiceData.totalShipping', $paymentParams)) {
+            $parameters['receiverOptions.invoiceData.totalShipping'] = $paymentParams['receiverOptions.invoiceData.totalShipping'];
+        }
         
         $i = 0;
         while (count(preg_grep("/^receiverOptions.invoiceData.item\(".$i."\)/", array_keys($paymentParams))) > 0) {
